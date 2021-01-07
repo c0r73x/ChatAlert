@@ -10,22 +10,24 @@ local TwinOptionsContainer_Index = 0
 local function CreateOptionsControls(panel, optionsTable, LastAnchor)
     local function TwinOptionsContainer(parent, leftWidget, rightWidget)
         TwinOptionsContainer_Index = TwinOptionsContainer_Index + 1
+
         local cParent = parent.scroll or parent
         local panel = parent.panel or cParent
-        local container = wm:CreateControl(
+
+        local container = WINDOW_MANAGER:CreateControl(
             "$(parent)TwinContainer" .. tostring(TwinOptionsContainer_Index),
             cParent,
             CT_CONTROL
         )
         container:SetResizeToFitDescendents(true)
-        container:SetAnchor(select(2, leftWidget:GetAnchor(0) ))
+        container:SetAnchor(select(2, leftWidget:GetAnchor(0)))
 
         leftWidget:ClearAnchors()
         leftWidget:SetAnchor(TOPLEFT, container, TOPLEFT)
         rightWidget:SetAnchor(TOPLEFT, leftWidget, TOPRIGHT, 5, 0)
 
-        leftWidget:SetWidth( leftWidget:GetWidth() - 2.5 ) -- fixes bad alignment with 'full' controls
-        rightWidget:SetWidth( rightWidget:GetWidth() - 2.5 )
+        leftWidget:SetWidth(leftWidget:GetWidth() - 2.5) -- fixes bad alignment with 'full' controls
+        rightWidget:SetWidth(rightWidget:GetWidth() - 2.5)
 
         leftWidget:SetParent(container)
         rightWidget:SetParent(container)
@@ -75,7 +77,6 @@ local function CreateOptionsControls(panel, optionsTable, LastAnchor)
     local function CreateWidgetsInPanel(
         parent,
         widgetDataTable,
-        inSubmenu,
         anchorOffset,
         lastAnchor,
         wasHalf
@@ -88,16 +89,18 @@ local function CreateOptionsControls(panel, optionsTable, LastAnchor)
 
             if widgetData then
                 local widgetType = widgetData.type
+                local offsetX = 0
                 local isSubmenu = (widgetType == "submenu")
 
                 if isSubmenu then
+                    offsetX = 5
                     wasHalf = false
                 end
 
                 _, anchorOffset, lastAddedControl, wasHalf = CreateAndAnchorWidget(
                     parent,
                     widgetData,
-                    inSubmenu and 5 or 0,
+                    offsetX,
                     anchorOffset,
                     lastAddedControl,
                     wasHalf
@@ -108,10 +111,9 @@ local function CreateOptionsControls(panel, optionsTable, LastAnchor)
                     CreateWidgetsInPanel(
                         lastAddedControl,
                         widgetData.controls,
-                        true,
                         anchorOffset,
                         nil,
-                        false
+                        wasHalf
                     )
                 end
             end
@@ -120,7 +122,7 @@ local function CreateOptionsControls(panel, optionsTable, LastAnchor)
         return lastSubmenu
     end
 
-    return CreateWidgetsInPanel(panel, optionsTable, false, 0, LastAnchor, false)
+    return CreateWidgetsInPanel(panel, optionsTable, 0, LastAnchor, false)
 end
 
 local function LoadSettings()
@@ -231,6 +233,42 @@ local function LoadSettings()
                 default = "",
             },
             {
+                type = "editbox",
+                name = "UserID Whitelist",
+                tooltip = "Only recieve alerts from these users",
+                getFunc = function()
+                    return checkSubmenu(
+                        index,
+                        not saveData.alerts[index]
+                    ) and saveData.alerts[index].whitelist or ""
+                end,
+                setFunc = function(text)
+                    saveData.alerts[index].whitelist = text
+                end,
+                isMultiline = true,
+                isExtraWide = true,
+                width = "half",
+                default = "",
+            },
+            {
+                type = "editbox",
+                name = "UserID Blacklist",
+                tooltip = "Dont recieve alerts from these users",
+                getFunc = function()
+                    return checkSubmenu(
+                        index,
+                        not saveData.alerts[index]
+                    ) and saveData.alerts[index].blacklist or ""
+                end,
+                setFunc = function(text)
+                    saveData.alerts[index].blacklist = text
+                end,
+                isMultiline = true,
+                isExtraWide = true,
+                width = "half",
+                default = "",
+            },
+            {
                 type = "dropdown",
                 name = "Channels",
                 choices = channels,
@@ -324,6 +362,8 @@ local function LoadSettings()
                                 type = "Word",
                                 channels = 999,
                                 color = "ff0000",
+                                whitelist = "",
+                                blacklist = "",
                             })
                         GetOptionsData()
                     end,

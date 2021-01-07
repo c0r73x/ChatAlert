@@ -87,6 +87,19 @@ function join(delimiter, list)
   return str
 end
 
+function contains(list, x)
+    if string.len(x) == 0 then
+        return true
+    end
+
+    for _, v in pairs(list) do
+        if string.len(v) > 0 then
+            if v == x then return true end
+        end
+    end
+    return false
+end
+
 local function CreateChannelLink(channelInfo, overrideName)
     local channelName = overrideName or ChatAlert.GetChannelName(channelInfo.id)
     return ("|H1:channel:%s|h[%s]:|h"):format(
@@ -137,34 +150,48 @@ function ChatAlert.OnNewChatMessage(
     end
 
     if fromDisplayName == ChatAlert.currentPlayer then
-        d("Why are you talking to yourself " .. fromDisplayName .. "?")
-        -- return
+        -- d("Why are you talking to yourself " .. fromDisplayName .. "?")
+        return
     end
 
     local found = false
 
     for _, alert in ipairs(ChatAlert.saveData.alerts) do
-        if alert.channels ~= 999 then
-            if alert.channels == 998 then
-                if not GuildOfficerChannels[channelType] then return end
-            elseif alert.channels == 997 and not GuildChannels[channelType] then
-                if not GuildChannels[channelType] then return end
-            elseif alert.channels ~= channelType then
-                return
-            end
+        local continue = true
+
+        if string.len(alert.whitelist) > 0 then
+            local wl = strsplit(alert.whitelist, "\n")
+            continue = contains(wl, fromDisplayName)
         end
 
-        if alert.type == 'Word' then
-            local words = strsplit(alert.filter, " ")
-            for _, word in pairs(words) do
-                if word then
-                    found = isWordFoundInString(word, text, 1)
-                end
+        if string.len(alert.blacklist) > 0 then
+            local bl = strsplit(alert.blacklist, "\n")
+            continue = contains(bl, fromDisplayName) == false
+        end
 
-                if found then
-                    text = insert(text, "|rx", found + string.len(word))
-                    text = insert(text, ("|c%s"):format(alert.color), found)
-                    break
+        if continue then
+            if alert.channels ~= 999 then
+                if alert.channels == 998 then
+                    if not GuildOfficerChannels[channelType] then return end
+                elseif alert.channels == 997 and not GuildChannels[channelType] then
+                    if not GuildChannels[channelType] then return end
+                elseif alert.channels ~= channelType then
+                    return
+                end
+            end
+
+            if alert.type == 'Word' then
+                local words = strsplit(alert.filter, " ")
+                for _, word in pairs(words) do
+                    if word then
+                        found = isWordFoundInString(word, text, 1)
+                    end
+
+                    if found then
+                        text = insert(text, "|rx", found + string.len(word))
+                        text = insert(text, ("|c%s"):format(alert.color), found)
+                        break
+                    end
                 end
             end
         end
