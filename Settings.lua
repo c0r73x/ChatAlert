@@ -223,8 +223,10 @@ local function LoadSettings()
                     saveData.alerts[index].color = ("%02x%02x%02x"):format(
                         r * 255, g * 255, b * 255
                     )
+                    --[[
                     d("Color: " .. saveData.alerts[index].color)
                     d("FromHex: " .. hex2rgb(saveData.alerts[index].color))
+                    --]]
                 end,
                 width = "full",
                 default = "ff0000",

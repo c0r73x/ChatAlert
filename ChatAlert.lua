@@ -46,11 +46,22 @@ end
 local function strsplit(s, delimiter)
     local result = {}
 
-    for match in (s..delimiter):gmatch("(.-)"..delimiter) do
+    for match in (s .. delimiter):gmatch("(.-)" .. delimiter) do
         table.insert(result, match)
     end
 
     return result
+end
+
+function join(delimiter, list)
+  local len = #list
+  if len == 0 then return "" end
+
+  local str = list[1]
+  for i = 2, len do
+    str = str .. delimiter .. list[i]
+  end
+  return str
 end
 
 function ChatAlert:Initialize()
@@ -92,6 +103,9 @@ function ChatAlert.OnNewChatMessage(
                 end
 
                 if found then
+                    local list = strsplit(text, word)
+                    local hl = ("|c%s%s|r"):format(alert.color, word)
+                    text = join(hl, list)
                     break
                 end
             end
