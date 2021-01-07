@@ -8,39 +8,58 @@ ChatAlert = {}
 ChatAlert.name = "ChatAlert"
 ChatAlert.short_name = "CA"
 
-local ChannelInfo = ZO_ChatSystem_GetChannelInfo()
+local AllChannels = {
+    [CHAT_CHANNEL_GUILD_1        ] = true,
+    [CHAT_CHANNEL_GUILD_2        ] = true,
+    [CHAT_CHANNEL_GUILD_3        ] = true,
+    [CHAT_CHANNEL_GUILD_4        ] = true,
+    [CHAT_CHANNEL_GUILD_5        ] = true,
+    [CHAT_CHANNEL_OFFICER_1      ] = true,
+    [CHAT_CHANNEL_OFFICER_2      ] = true,
+    [CHAT_CHANNEL_OFFICER_3      ] = true,
+    [CHAT_CHANNEL_OFFICER_4      ] = true,
+    [CHAT_CHANNEL_OFFICER_5      ] = true,
+    [CHAT_CHANNEL_PARTY          ] = true,
+    [CHAT_CHANNEL_SAY            ] = true,
+    [CHAT_CHANNEL_YELL           ] = true,
+    [CHAT_CHANNEL_ZONE           ] = true,
+    [CHAT_CHANNEL_ZONE_LANGUAGE_1] = true,
+    [CHAT_CHANNEL_ZONE_LANGUAGE_2] = true,
+    [CHAT_CHANNEL_ZONE_LANGUAGE_3] = true,
+    [CHAT_CHANNEL_ZONE_LANGUAGE_4] = true,
+}
 
-local function GetChannelName(channelId)
-    local channelInfo = ChannelInfo[channelId]
-    if channelInfo then
-        local dynName = nil
+local GuildOfficerChannels = {
+    [CHAT_CHANNEL_GUILD_1  ] = true,
+    [CHAT_CHANNEL_GUILD_2  ] = true,
+    [CHAT_CHANNEL_GUILD_3  ] = true,
+    [CHAT_CHANNEL_GUILD_4  ] = true,
+    [CHAT_CHANNEL_GUILD_5  ] = true,
+    [CHAT_CHANNEL_OFFICER_1] = true,
+    [CHAT_CHANNEL_OFFICER_2] = true,
+    [CHAT_CHANNEL_OFFICER_3] = true,
+    [CHAT_CHANNEL_OFFICER_4] = true,
+    [CHAT_CHANNEL_OFFICER_5] = true,
+}
 
-        if channelInfo.dynamicName then
-            dynName = GetDynamicChatChannelName(channelInfo.id)
-        end
+local GuildChannels = {
+    [CHAT_CHANNEL_GUILD_1] = true,
+    [CHAT_CHANNEL_GUILD_2] = true,
+    [CHAT_CHANNEL_GUILD_3] = true,
+    [CHAT_CHANNEL_GUILD_4] = true,
+    [CHAT_CHANNEL_GUILD_5] = true,
+}
 
-        return dynName and dynName or channelInfo.name
-    end
-
-    return "Unknown"
-end
-
-local function CreateChannelLink(channelInfo, overrideName)
-    local channelName = overrideName or GetChannelName(channelInfo.id)
-    return ("|cff00ff|H1:channel:%s|h[%s]:|h|r"):format(
-        channelInfo.id,
-        channelName
-    )
-end
-
-local function isWordFoundInString(word, str)
-    local w = word:lower()
+local function isWordFoundInString(word, str, start)
+    local w = word:gsub("([^%w])", "%%%1"):lower()
     local s = str:lower()
 
-    return select(2,s:gsub('^' .. w .. '%W+','')) +
-        select(2,s:gsub('%W+' .. w .. '$','')) +
-        select(2,s:gsub('^' .. w .. '$','')) +
-        select(2,s:gsub('%W+' .. w .. '%W+','')) > 0
+    local a, b = s:find('^' .. w .. '%W+') if a then return a, b end
+    a, b = s:find('%W+' .. w .. '%W+') if a then return a, b end
+    a, b = s:find('%W+' .. w .. '$') if a then return a, b end
+    a, b = s:find('^' .. w .. '$') if a then return a, b end
+
+    return nil
 end
 
 local function strsplit(s, delimiter)
@@ -51,6 +70,10 @@ local function strsplit(s, delimiter)
     end
 
     return result
+end
+
+local function insert(str1, str2, pos)
+    return str1:sub(1,pos)..str2..str1:sub(pos+1)
 end
 
 function join(delimiter, list)
@@ -64,15 +87,41 @@ function join(delimiter, list)
   return str
 end
 
+local function CreateChannelLink(channelInfo, overrideName)
+    local channelName = overrideName or ChatAlert.GetChannelName(channelInfo.id)
+    return ("|H1:channel:%s|h[%s]:|h"):format(
+        channelInfo.id,
+        channelName
+    )
+end
+
 function ChatAlert:Initialize()
-    self.saveData = self.LoadSettings()
+    self.ChannelInfo = ZO_ChatSystem_GetChannelInfo()
     self.currentPlayer = GetDisplayName()
+
+    self.saveData = self.LoadSettings()
 
     EVENT_MANAGER:RegisterForEvent(
         self.name,
         EVENT_CHAT_MESSAGE_CHANNEL,
         self.OnNewChatMessage
     )
+end
+
+function ChatAlert.GetChannelName(channelId)
+    local channelInfo = ChatAlert.ChannelInfo[channelId]
+    if channelInfo then
+        local dynName = nil
+
+        if channelInfo.dynamicName then
+            dynName = GetDynamicChatChannelName(channelInfo.id)
+            if dynName then return dynName end
+        end
+
+        if channelInfo.name then return channelInfo.name end
+    end
+
+    return "Unknown"
 end
 
 function ChatAlert.OnNewChatMessage(
@@ -82,52 +131,60 @@ function ChatAlert.OnNewChatMessage(
     text,
     isCustomerService,
     fromDisplayName)
-    if channelType == CHAT_CHANNEL_WHISPER then
+
+    if not AllChannels[channelType] then
         return
     end
 
     if fromDisplayName == ChatAlert.currentPlayer then
-        -- d("Why are you talking to yourself " .. fromDisplayName .. "?")
-        return
+        d("Why are you talking to yourself " .. fromDisplayName .. "?")
+        -- return
     end
 
     local found = false
 
     for _, alert in ipairs(ChatAlert.saveData.alerts) do
+        if alert.channels ~= 999 then
+            if alert.channels == 998 then
+                if not GuildOfficerChannels[channelType] then return end
+            elseif alert.channels == 997 and not GuildChannels[channelType] then
+                if not GuildChannels[channelType] then return end
+            elseif alert.channels ~= channelType then
+                return
+            end
+        end
+
         if alert.type == 'Word' then
             local words = strsplit(alert.filter, " ")
             for _, word in pairs(words) do
                 if word then
-                    -- d("Checking for '" .. word .. "'")
-                    found = isWordFoundInString(word, text)
+                    found = isWordFoundInString(word, text, 1)
                 end
 
                 if found then
-                    local list = strsplit(text, word)
-                    local hl = ("|c%s%s|r"):format(alert.color, word)
-                    text = join(hl, list)
+                    text = insert(text, "|rx", found + string.len(word))
+                    text = insert(text, ("|c%s"):format(alert.color), found)
                     break
                 end
             end
         end
 
-        if found then
-            break
-        end
+        if found then break end
     end
 
-    if not found then
-        return
-    end
+    if not found then return end
 
-    local channelInfo = ChannelInfo[channelType]
-    if channelInfo and channelInfo.format then
+    local channelInfo = ChatAlert.ChannelInfo[channelType]
+    if channelInfo and channelInfo.format and channelInfo.channelLinkable then
         local r, g, b = ZO_ChatSystem_GetCategoryColorFromChannel(channelType)
+        local color = ("|c%02x%02x%02x"):format(
+            r * 255, g * 255, b * 255
+        )
 
-        local msg = ("%s |c%02x%02x%02x%s|r"):format(
+        local msg = ("%s%s %s|r"):format(
+            color,
             CreateChannelLink(channelInfo),
-            r * 255, g * 255, b * 255,
-            text
+            text:gsub('|rx', color)
         )
 
         CHAT_ROUTER:FormatAndAddChatMessage(

@@ -131,6 +131,47 @@ local function LoadSettings()
         alerts = {},
     }
 
+    local channelList = {
+        999, -- All
+        998, -- Guild + Officer
+        997, -- Guilds
+        CHAT_CHANNEL_GUILD_1,
+        CHAT_CHANNEL_GUILD_2,
+        CHAT_CHANNEL_GUILD_3,
+        CHAT_CHANNEL_GUILD_4,
+        CHAT_CHANNEL_GUILD_5,
+        CHAT_CHANNEL_OFFICER_1,
+        CHAT_CHANNEL_OFFICER_2,
+        CHAT_CHANNEL_OFFICER_3,
+        CHAT_CHANNEL_OFFICER_4,
+        CHAT_CHANNEL_OFFICER_5,
+        CHAT_CHANNEL_PARTY,
+        CHAT_CHANNEL_SAY,
+        CHAT_CHANNEL_YELL,
+        CHAT_CHANNEL_ZONE,
+        CHAT_CHANNEL_ZONE_LANGUAGE_1,
+        CHAT_CHANNEL_ZONE_LANGUAGE_2,
+        CHAT_CHANNEL_ZONE_LANGUAGE_3,
+        CHAT_CHANNEL_ZONE_LANGUAGE_4,
+    }
+
+    local channels = {
+        "All",
+        "Guilds & Officer",
+        "Guilds",
+    }
+
+    for _, id in ipairs(channelList) do
+        local Officer = ""
+
+        if id < 900 then
+            if id > 16 and id < 22 then
+                Officer = "Officer "
+            end
+            table.insert(channels, Officer .. ChatAlert.GetChannelName(id))
+        end
+    end
+
     local name = GetDisplayName()
     local world = GetWorldName()
     local key = world .. name
@@ -191,26 +232,25 @@ local function LoadSettings()
             },
             {
                 type = "dropdown",
-                name = "Match type",
-                choices = {
-                    "Word",
-                },
+                name = "Channels",
+                choices = channels,
+                choicesValues = channelList,
                 getFunc = function()
                     return checkSubmenu(
                         index,
                         not saveData.alerts[index]
-                    ) and saveData.alerts[index].type or ""
+                    ) and saveData.alerts[index].channels or 999
                 end,
-                setFunc = function(text)
-                    saveData.alerts[index].type = text
+                setFunc = function(value)
+                    saveData.alerts[index].channels = value
                 end,
                 width = "full",
-                default = "Word",
+                default = 999,
             },
             {
                 type = "colorpicker",
                 name = "Match color",
-                tooltip = "Does nothing for now",
+                tooltip = "Color of matched text",
                 getFunc = function()
                     if not saveData.alerts[index] then
                         return 1, 0, 0
@@ -223,10 +263,6 @@ local function LoadSettings()
                     saveData.alerts[index].color = ("%02x%02x%02x"):format(
                         r * 255, g * 255, b * 255
                     )
-                    --[[
-                    d("Color: " .. saveData.alerts[index].color)
-                    d("FromHex: " .. hex2rgb(saveData.alerts[index].color))
-                    --]]
                 end,
                 width = "full",
                 default = "ff0000",
@@ -286,6 +322,7 @@ local function LoadSettings()
                                 enabled = true,
                                 filter = "",
                                 type = "Word",
+                                channels = 999,
                                 color = "ff0000",
                             })
                         GetOptionsData()
@@ -320,7 +357,7 @@ local function LoadSettings()
             type = "panel",
             name = "ChatAlert",
             author = "c0r73x",
-            version = "0.1",
+            version = "0.3",
             slashCommand = "/chatalert",
             registerForRefresh = true,
             registerForDefaults = false,
