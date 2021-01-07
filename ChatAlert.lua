@@ -13,15 +13,24 @@ local ChannelInfo = ZO_ChatSystem_GetChannelInfo()
 local function GetChannelName(channelId)
     local channelInfo = ChannelInfo[channelId]
     if channelInfo then
-        return channelInfo.dynamicName and
-            GetDynamicChatChannelName(channelInfo.id) or
-            channelInfo.name
+        local dynName = nil
+
+        if channelInfo.dynamicName then
+            dynName = GetDynamicChatChannelName(channelInfo.id)
+        end
+
+        return dynName and dynName or channelInfo.name
     end
+
+    return "Unknown"
 end
 
 local function CreateChannelLink(channelInfo, overrideName)
     local channelName = overrideName or GetChannelName(channelInfo.id)
-    return string.format("|cff00ff|H1:channel:%s|h[%s]:|h|r", channelInfo.id, channelName)
+    return ("|cff00ff|H1:channel:%s|h[%s]:|h|r"):format(
+        channelInfo.id,
+        channelName
+    )
 end
 
 local function isWordFoundInString(word, str)
