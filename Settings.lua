@@ -5,7 +5,7 @@
 --
 
 local panelName = "ChatAlertAddon"
-local TwinOptionsContainer_Index = 0
+local TwinOptionsContainer_Index = 10000 -- Dont conflict with addonMenu
 
 local function CreateOptionsControls(panel, optionsTable, LastAnchor)
     local function TwinOptionsContainer(parent, leftWidget, rightWidget)
